@@ -10,12 +10,14 @@ Features
 
 Usage
 -----
+```
 sparce infile [-o outfile] [-b blocksize] [-f] [-c] [-v]
 	-o : output filename
 	-f : force overwite existing outfile
 	-b : block size in bytes for packing
 	-c : check packed file unpacks to original
 	-v : verbose
+```
 
 Build
 -----
