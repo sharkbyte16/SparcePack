@@ -159,6 +159,7 @@ begin
         LastBlock := OrgSize - (NrBlocks-1)*BlockSize;
         MD5Hash   := Hash;
     end;
+
     {$IFDEF DEBUG}
         if SP.AppOptions.Verbose then PrintHeader(SP);
     {$ENDIF}
@@ -217,7 +218,9 @@ begin
 
             NrBytesRead := FSin.Read(Buff[0], Header.BlockSize);
             MD5Update(MD5Context, Buff[0], NrBytesRead);
-            if NrBytesRead = 0 then break;
+            if NrBytesRead = 0 then begin
+                raise Exception.Create('Error packing -- file truncated file during reading '+SP.AppOptions.InputFile);
+            end;
 
             if IsZeroBlock(Buff, NrBytesRead) then Sparce := 1 else Sparce := 0;
             FSout.WriteByte(Sparce);                                    // write out sparce indicator
@@ -263,6 +266,7 @@ var
     InFileName : String;
     S : String;
     i : Integer;
+    HeaderError : Boolean;
 begin
     with SP do begin
         InFileName := AppOptions.InputFile;
@@ -287,6 +291,20 @@ begin
         // reset file pointer and read the whole header
         FSin.Seek(0, soBeginning);
         FSin.ReadBuffer(Header, SizeOf(Header));
+
+        // some header sanity checks
+        HeaderError := False;
+        with SP.Header do begin
+            if (OrgSize <= 0) or (BlockSize <= 0) or (NrBlocks <= 0) or (LastBlock <= 0) then HeaderError := True;
+            if (BlockSize > MAXBLKSIZE) or (BlockSize < MINBLKSIZE) then HeaderError := True;
+            if Orgsize <> BlockSize*(NrBlocks-1) + LastBlock then HeaderError := True;
+            if (BlockSize > OrgSize) and (LastBlock <> OrgSize ) then HeaderError := True;
+            if CheckHash(MD5Hash, DummyMD5Hash) then HeaderError := True;
+        end;
+        if HeaderError then begin
+            Raise Exception.Create('Error: Corrupt file header.');
+        end;
+
         {$IFDEF DEBUG}
         if SP.AppOptions.Verbose then PrintHeader(SP);
         {$ENDIF}
@@ -318,7 +336,9 @@ begin
 
         repeat
             NrBytesRead := FSin.Read(Sparce, SizeOf(Sparce));
-            if NrBytesRead = 0 then break; // truncated/corrupt file
+            if NrBytesRead = 0 then begin
+                raise Exception.Create('Error unpacking -- file truncated file during reading '+SP.AppOptions.InputFile);
+            end;
 
             // The last block may be shorter than BlockSize; every other block is full-size.
             if BlockNr = Header.NrBlocks - 1 then

@@ -19,6 +19,11 @@ sparce infile [-o outfile] [-b blocksize] [-f] [-c] [-v]
 	-v : verbose
 ```
 
+Warning alphas stage
+--------------------
+This is a new tool, still in alpha stage. Data integrity not guaranteed and file format may still change. 
+**Don't use for backup!**
+
 Build
 -----
 SparcePack is using the FreePascal 3.2+ on Linux x86_64, it may compile on other platforms supported by FreePascal.

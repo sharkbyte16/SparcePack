@@ -10,7 +10,9 @@ const
     PACKCR = 'Copyright (c) 2026 SharkByte16.';
     PACKEXT = '.spp';
     PACKMAGIC = 'SPRSPK';
-    PACKBLKSIZE = 512;
+    PACKBLKSIZE = 4096;
+    MINBLKSIZE = 512;
+    MAXBLKSIZE = 65536;
 
 implementation
 

@@ -28,10 +28,10 @@ procedure Usage;
 begin
     WriteLn(PACKNAME, ' version ',PACKVER,'. ', PACKCR);
     WriteLn('Packs a sparce file or inflates a packed file.');
-    WriteLn('sparce infile [-o outfile] [-b blocksize] [-f] [-c] [-v]');
+    WriteLn('sparce inputfile [-o outputfile] [-b blocksize] [-f] [-c] [-v]');
 	WriteLn('       -o : output filename');
     WriteLn('       -f : force overwite existing outfile');
-    WriteLn('       -b : block size in bytes for packing');
+    WriteLn('       -b : block size in bytes for packing (min '+IntToStr(MINBLKSIZE)+', max '+IntToStr(MAXBLKSIZE)+')');
     WriteLn('       -c : check packed file unpacks to original');
     WriteLn('       -v : verbose');
 end;
@@ -115,7 +115,10 @@ begin
                      except
                          on E : EConvertError do raise Exception.Create('Invalid block size'+OptArg);
                      end;
-                 end;
+                    if (Opts.BlockSize > MAXBLKSIZE) or (Opts.BlockSize < MINBLKSIZE) then begin
+                        raise Exception.Create('Invalid block size'+OptArg);
+                    end;
+                end;
         end;
     until C=EndOfOptions;
 
