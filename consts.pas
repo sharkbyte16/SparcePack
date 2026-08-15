@@ -6,7 +6,7 @@ interface
 
 const
     PACKNAME = 'Sparce File Packer';
-    PACKVER = '0.1';
+    PACKVER = '0.2';
     PACKCR = 'Copyright (c) 2026 SharkByte16.';
     PACKEXT = '.spp';
     PACKMAGIC = 'SPRSPK';

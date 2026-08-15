@@ -1,15 +1,18 @@
 {###############################################################################
 
  Sparce Pack File format:
- +----------------+
- | File Header    |
- +----------------+
- | Sparce         |
- | [Block data]   |
- | Sparce         |
- | [Block data]   |
- | ...            |
- +----------------+
+ +------------------------+
+ | File header            |
+ | Header CRC32           |
+ | Duplicate header       |
+ | Duplicate header CRC32 |
+ +------------------------+
+ | Sparce                 |
+ | [Block data]           |
+ | Sparce                 |
+ | [Block data]           |
+ | ...                    |
+ +------------------------+
 
  File Header:
  Magic        :  6 bytes : 'SPRSPK'
@@ -19,6 +22,8 @@
  NrBlocks     :  8 bytes : Int64
  LastBlock    :  4 bytes : LongWord
  MD5Hash      : 16 bytes : TMD5Digest
+
+ Header CRC32 :  4 bytes : Cardinal
 
  Sparce         : 1 byte
  Block data     : array[0..Blocksize-1] of byte
@@ -32,7 +37,7 @@ unit SppUnit;
 interface
 
 uses
-    Classes, SysUtils, getopts, Math, md5,
+    Classes, SysUtils, getopts, Math, md5, crc,
     Consts, Options, Misc;
 
 type
@@ -91,13 +96,13 @@ var
     i : Integer;
 begin
     with SP.Header do begin
-        Write('  Magic     '); for i := 0 to Length(PACKMAGIC)-1 do Write(Chr(Magic[i])); WriteLn;
+        Write(  '  Magic     '); for i := 0 to Length(PACKMAGIC)-1 do Write(Chr(Magic[i])); WriteLn;
         WriteLn('  Version   ', Version[0],'.',Version[1]);
         WriteLn('  OrgSize   ', OrgSize    );
         WriteLn('  BlockSize ', BlockSize  );
         WriteLn('  NrBlocks  ', NrBlocks   );
         WriteLn('  LastBlock ', LastBlock  );
-        Write('  MD5Hash   '); for i := 0 to 15 do Write(IntToHex(MD5Hash[i])); WriteLn;
+        Write(  '  MD5Hash   '); for i := 0 to 15 do Write(IntToHex(MD5Hash[i])); WriteLn;
     end;
 end;
 
@@ -199,13 +204,20 @@ var
     PackedSize : Int64;
     MD5Context : TMD5Context;
     Hash : TMD5Digest;
+    CRC : Cardinal;
 begin
 
     with SP do begin
 
         if SP.AppOptions.Verbose then Write('* Packing: '+AppOptions.InputFile+': ');
 
-        FSout.WriteBuffer(Header, SizeOf(Header)); // still with dummy hash
+        CRC := crc32(0, nil, 0);                   // reset CRC
+        CRC := crc32(CRC, @Header, SizeOf(Header)); // calc header CRC
+
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out header still with dummy hash
+        FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out CRC
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out duplicate header still with dummy hash
+        FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out duplicate header CRC
 
         MD5Init(MD5Context);
 
@@ -241,18 +253,25 @@ begin
             if Sparce = 0 then FSout.Write(Buff[0], NrBytesRead);
         end;
 
-        // done writing out --> update hash in header --> overwrite header in file
+        // done writing out --> update hash in header --> overwrite headers in file and their CRCs
         MD5Final(MD5Context, Hash);
         Header.MD5Hash := Hash;
         FSout.Seek(0, soBeginning);
-        FSout.WriteBuffer(Header, SizeOf(Header));
+
+        CRC := crc32(0, nil, 0);                   // reset CRC
+        CRC := crc32(CRC, @Header, SizeOf(Header)); // calc header CRC
+
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out header still with dummy hash
+        FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out CRC
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out duplicate header still with dummy hash
+        FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out duplicate header CRC
 
         if SP.AppOptions.Verbose then WriteLn;
 
         PackedSize := FSout.Size;
         if SP.AppOptions.Verbose then WriteLn('* Compression achieved: ', PackedSize*100 div Header.OrgSize, '%');
 
-    end; // with
+    end; // with SP
 
 end;
 
@@ -267,6 +286,8 @@ var
     S : String;
     i : Integer;
     HeaderError : Boolean;
+    Header1, HEader2 : THeader;
+    CRC1, CRC2, CRCcalc1, CRCcalc2 : Cardinal;
 begin
     with SP do begin
         InFileName := AppOptions.InputFile;
@@ -288,9 +309,25 @@ begin
             Raise Exception.Create('"'+InFileName+'": Not a SparcePacked file');
         end;
 
-        // reset file pointer and read the whole header
+        // reset file pointer
         FSin.Seek(0, soBeginning);
-        FSin.ReadBuffer(Header, SizeOf(Header));
+        // read headers and CRCs
+        FSin.ReadBuffer(Header1, SizeOf(Header1));
+        FSin.ReadBuffer(CRC1, SizeOf(CRC1));
+        FSin.ReadBuffer(Header2, SizeOf(Header2));
+        FSin.ReadBuffer(CRC2, SizeOf(CRC2));
+        // Check CRCs
+        CRCcalc1 := crc32(0, nil, 0);
+        CRCcalc1 := crc32(CRCcalc1, @Header1, SizeOf(Header1));
+        CRCcalc2 := crc32(0, nil, 0);
+        CRCcalc2 := crc32(CRCcalc2, @Header2, SizeOf(Header2));
+        Header := Header1;
+        if (CRCcalc1 <> CRC1 ) then begin
+            WriteLn('Error: Corrupt file header, tryin to recover...');
+            Header := Header2; // Use duplicate header
+            if (CRCcalc2 <> CRC2 ) then Raise Exception.Create('Fatal error: unable to recover file header.');
+            WriteLn('File header recovery Successfully.');
+        end;
 
         // some header sanity checks
         HeaderError := False;
