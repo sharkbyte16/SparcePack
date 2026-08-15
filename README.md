@@ -19,7 +19,7 @@ sparce infile [-o outfile] [-b blocksize] [-f] [-c] [-v]
 	-v : verbose
 ```
 
-Warning alphas stage
+Warning alpha stage
 --------------------
 This is a new tool, still in alpha stage. Data integrity not guaranteed and file format may still change. 
 **Don't use for backup!**

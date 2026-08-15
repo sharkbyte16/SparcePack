@@ -22,6 +22,9 @@ begin
             CreateOutFile(SPP);
             SppPack(SPP);
             if SPP.AppOptions.CheckPacked then begin
+                // force OS to flush data to physical disk
+                if not FileFlush(SPP.FSout.Handle) then
+                    raise Exception.Create('fsync failed: ' + SysErrorMessage(GetLastOSError));
                 // close the open streams
                 if SPP.FSout <> nil then FreeAndNil(SPP.FSout);
                 if SPP.FSin <> nil then FreeAndNil(SPP.FSin);
@@ -48,10 +51,15 @@ begin
             Halt(1);
         end;
 
-    end;
+    end; // try
 
-    // clean up streams
-    if SPP.FSout <> nil then FreeAndNil(SPP.FSout);
+    // and clean up streams
+    if SPP.FSout <> nil then begin
+        // force OS to flush data to physical disk
+        if not FileFlush(SPP.FSout.Handle) then
+            raise Exception.Create('fsync failed: ' + SysErrorMessage(GetLastOSError));
+        FreeAndNil(SPP.FSout);
+    end;
     if SPP.FSin  <> nil then FreeAndNil(SPP.FSin);
     if SPP.AppOptions.Verbose then WriteLn('Done.');
 end.
