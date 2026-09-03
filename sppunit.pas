@@ -269,7 +269,9 @@ begin
         if SP.AppOptions.Verbose then WriteLn;
 
         PackedSize := FSout.Size;
-        if SP.AppOptions.Verbose then WriteLn('* Compression achieved: ', PackedSize*100 div Header.OrgSize, '%');
+        if SP.AppOptions.Verbose then WriteLn('* Compression achieved: ',
+                                              PackedSize*100 div Header.OrgSize, '% (-',
+                                              100-PackedSize*100 div Header.OrgSize,'%)');
 
     end; // with SP
 
