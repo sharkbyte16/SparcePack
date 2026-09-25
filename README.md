@@ -26,6 +26,5 @@ This is a new tool, still in alpha stage. Data integrity not guaranteed and file
 
 Build
 -----
-SparcePack is using the FreePascal 3.2+ on Linux x86_64, it may compile on other platforms supported by FreePascal.
-To build SparcePack, simply run `fpc sparce.pas` or run the `build.sh` script.
+Two sourvce versions of the SparcePack are available, both for Linux x86_64. The version in `\pascal` is written for FreePascal 3.2+. The version in `\odin` is witten for Odin 2026-09. To build run the `build.sh` script.
 
