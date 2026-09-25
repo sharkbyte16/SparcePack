@@ -16,7 +16,7 @@
 
  File Header:
  Magic        :  6 bytes : 'SPRSPK'
- Version      :  4 bytes : LongWord
+ Version      :  2 bytes : array [0..1] of byte
  BlockSize    :  4 bytes : LongWord
  OrgSize      :  8 bytes : Int64
  NrBlocks     :  8 bytes : Int64
@@ -75,7 +75,7 @@ procedure SppUnpack(var SP : TSparsePacker; NoWrite : Boolean);
 
 implementation
 
-// --- unexposed generic routines ----------------------
+// --- exposed generic routines ----------------------
 
 procedure InitHeader(var SP : TSparsePacker);
 var
@@ -88,8 +88,6 @@ begin
         BlockSize := PACKBLKSIZE;
     end;
 end;
-
-// --- exposed generic routines ----------------------
 
 procedure PrintHeader(SP : TSparsePacker);
 var
@@ -261,9 +259,9 @@ begin
         CRC := crc32(0, nil, 0);                   // reset CRC
         CRC := crc32(CRC, @Header, SizeOf(Header)); // calc header CRC
 
-        FSout.WriteBuffer(Header, SizeOf(Header)); // write out header still with dummy hash
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out header with actual hash
         FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out CRC
-        FSout.WriteBuffer(Header, SizeOf(Header)); // write out duplicate header still with dummy hash
+        FSout.WriteBuffer(Header, SizeOf(Header)); // write out duplicate header with actual hash
         FSout.WriteBuffer(CRC, SizeOf(CRC));       // and write out duplicate header CRC
 
         if SP.AppOptions.Verbose then WriteLn;
